@@ -1,1 +1,28 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Film</title>
 
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    img {
+      max-width: 90vw;
+      max-height: 90vh;
+    }
+  </style>
+</head>
+
+<body>
+  <img src="SD Holding Page.jpg" alt="Film image">
+</body>
+</html>
