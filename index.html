@@ -5,26 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Film</title>
 
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-    }
+ <style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+  }
 
-    body {
-      overflow: hidden;
-    }
+  body {
+    overflow: hidden;
+  }
 
-    img {
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-      object-position: center;
-      display: block;
-    }
-  </style>
+  img {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh; /* modern mobile-safe viewport */
+    object-fit: cover;
+    object-position: center;
+    display: block;
+  }
+</style>
 </head>
 
 <body>
