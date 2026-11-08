@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
   <title>Silent Film</title>
   <meta name="description" content="Silent Film — a filmette.">
@@ -30,6 +30,7 @@
       background: #000;
     }
 
+    /* Landscape / desktop: film fills the screen */
     #player {
       position: absolute;
       top: 50%;
@@ -38,15 +39,70 @@
       height: 56.25vw;
       min-width: 177.78vh;
       min-height: 100vh;
+      min-width: 177.78dvh;
+      min-height: 100dvh;
       transform: translate(-50%, -50%);
       border: none;
       pointer-events: none;
     }
 
+    /* Portrait (phones held upright): show the whole film, centred */
+    @media (orientation: portrait) {
+      #player {
+        width: 100vw;
+        height: 56.25vw;
+        min-width: 0;
+        min-height: 0;
+      }
+    }
+
+    /* Rotate-your-phone hint: icon only, portrait on touch devices only */
+    .rotate-hint {
+      display: none;
+      position: fixed;
+      left: 50%;
+      top: calc(50% + 28.125vw + 32px);
+      transform: translateX(-50%);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .rotate-hint svg {
+      display: block;
+      width: 40px;
+      height: 40px;
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.7);
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      animation: tilt 3.5s ease-in-out infinite;
+    }
+
+    @keyframes tilt {
+      0%, 20% { transform: rotate(0deg); }
+      50%, 75% { transform: rotate(-90deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    @media (orientation: portrait) and (hover: none) and (pointer: coarse) {
+      .rotate-hint {
+        display: block;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .rotate-hint svg {
+        animation: none;
+        transform: rotate(-90deg);
+      }
+    }
+
+    /* Volume control */
     .volume {
       position: fixed;
       right: 24px;
-      bottom: 24px;
+      bottom: calc(64px + env(safe-area-inset-bottom, 0px));
       display: flex;
       align-items: center;
       gap: 12px;
@@ -120,6 +176,80 @@
       background: #fff;
       border: none;
     }
+
+    /* On phones and tablets the device's own volume buttons control loudness,
+       so only the mute icon is shown */
+    @media (hover: none) and (pointer: coarse) {
+      .volume input[type="range"] {
+        display: none;
+      }
+    }
+
+    /* Seek bar */
+    .seek {
+      position: fixed;
+      left: 24px;
+      right: 24px;
+      bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      z-index: 10;
+    }
+
+    .seek.visible,
+    .seek:hover,
+    .seek:focus-within {
+      opacity: 1;
+    }
+
+    .seek input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      display: block;
+      width: 100%;
+      height: 28px; /* large touch area, thin visible line */
+      background: transparent;
+      outline: none;
+      cursor: pointer;
+      --p: 0%;
+    }
+
+    .seek input[type="range"]::-webkit-slider-runnable-track {
+      height: 3px;
+      border-radius: 2px;
+      background: linear-gradient(to right, #fff var(--p), rgba(255, 255, 255, 0.35) var(--p));
+    }
+
+    .seek input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      margin-top: -4.5px;
+      border-radius: 50%;
+      background: #fff;
+      border: none;
+    }
+
+    .seek input[type="range"]::-moz-range-track {
+      height: 3px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.35);
+    }
+
+    .seek input[type="range"]::-moz-range-progress {
+      height: 3px;
+      border-radius: 2px;
+      background: #fff;
+    }
+
+    .seek input[type="range"]::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      border: none;
+    }
   </style>
 </head>
 
@@ -128,6 +258,13 @@
   <main class="film-container">
     <div id="player"></div>
   </main>
+
+  <div class="rotate-hint" aria-hidden="true">
+    <svg viewBox="0 0 24 24">
+      <rect x="6.5" y="2.5" width="11" height="19" rx="2.5"></rect>
+      <line x1="10.5" y1="18.5" x2="13.5" y2="18.5"></line>
+    </svg>
+  </div>
 
   <div class="volume is-muted" id="volume">
     <button id="muteBtn" type="button" aria-label="Toggle sound">
@@ -145,15 +282,22 @@
     <input id="volumeSlider" type="range" min="0" max="100" value="100" aria-label="Volume">
   </div>
 
+  <div class="seek" id="seekWrap">
+    <input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek">
+  </div>
+
   <script>
     // YouTube video ID (the part after "v=" in the YouTube link)
     var VIDEO_ID = '0rHxK0Hjqnw';
 
     var player;
     var volumeEl = document.getElementById('volume');
+    var seekWrap = document.getElementById('seekWrap');
     var muteBtn = document.getElementById('muteBtn');
     var slider = document.getElementById('volumeSlider');
+    var seekEl = document.getElementById('seek');
     var hideTimer;
+    var dragging = false;
 
     // Load the YouTube IFrame API
     var tag = document.createElement('script');
@@ -228,6 +372,40 @@
       }
     });
 
+    // Seek bar: update the filled part while dragging, jump when released
+    function setSeekFill(fraction) {
+      seekEl.style.setProperty('--p', (fraction * 100) + '%');
+    }
+
+    seekEl.addEventListener('input', function () {
+      dragging = true;
+      setSeekFill(seekEl.value / 1000);
+    });
+
+    seekEl.addEventListener('change', function () {
+      if (player && player.getDuration) {
+        var d = player.getDuration();
+        if (d) {
+          player.seekTo((seekEl.value / 1000) * d, true);
+        }
+      }
+      dragging = false;
+    });
+
+    seekEl.addEventListener('pointerup', function () {
+      setTimeout(function () { dragging = false; }, 300);
+    });
+
+    // Keep the seek bar in step with the film
+    setInterval(function () {
+      if (!player || !player.getDuration || dragging) return;
+      var d = player.getDuration();
+      if (!d) return;
+      var f = player.getCurrentTime() / d;
+      seekEl.value = Math.round(f * 1000);
+      setSeekFill(f);
+    }, 250);
+
     // Turn sound on at the first click, tap or key press anywhere on the page
     var interactionEvents = ['click', 'touchend', 'keydown'];
 
@@ -258,9 +436,11 @@
     // Show controls on movement / touch, fade out when idle
     function showControls() {
       volumeEl.classList.add('visible');
+      seekWrap.classList.add('visible');
       clearTimeout(hideTimer);
       hideTimer = setTimeout(function () {
         volumeEl.classList.remove('visible');
+        seekWrap.classList.remove('visible');
       }, 2500);
     }
 
