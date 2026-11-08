@@ -4,9 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Silver Daydream</title>
-
-  <meta name="description" content="Silver Daydream — A film.">
+  <title>Silent Film</title>
+  <meta name="description" content="Silent Film — A film.">
 
   <style>
     * {
@@ -26,27 +25,99 @@
     .film-container {
       position: fixed;
       inset: 0;
-      width: 100%;
-      height: 100%;
       overflow: hidden;
       background: #000;
     }
 
-    .film-container iframe {
+    #player {
       position: absolute;
       top: 50%;
       left: 50%;
-
       width: 100vw;
       height: 56.25vw;
-
       min-width: 177.78vh;
       min-height: 100vh;
-
       transform: translate(-50%, -50%);
-
       border: none;
       pointer-events: none;
+    }
+
+    .volume {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      z-index: 10;
+    }
+
+    .volume.visible,
+    .volume:hover,
+    .volume:focus-within {
+      opacity: 1;
+    }
+
+    .volume button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: none;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .volume svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .volume .icon-muted { display: none; }
+    .volume.is-muted .icon-on { display: none; }
+    .volume.is-muted .icon-muted { display: block; }
+
+    .volume input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 90px;
+      height: 3px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.4);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .volume input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      border: none;
+    }
+
+    .volume input[type="range"]::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      border: none;
     }
   </style>
 </head>
@@ -54,15 +125,149 @@
 <body>
 
   <main class="film-container">
-
-    <iframe
-      src="https://www.youtube.com/embed/4NdDRfw938s?autoplay=1&mute=1&loop=1&playlist=4NdDRfw938s&controls=0&rel=0&playsinline=1&modestbranding=1"
-      title="Silver Daydream"
-      allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-      allowfullscreen>
-    </iframe>
-
+    <div id="player"></div>
   </main>
+
+  <div class="volume is-muted" id="volume">
+    <button id="muteBtn" type="button" aria-label="Toggle sound">
+      <svg class="icon-on" viewBox="0 0 24 24" aria-hidden="true">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M15.5 8.5a5 5 0 0 1 0 7"></path>
+        <path d="M18.5 5.5a9 9 0 0 1 0 13"></path>
+      </svg>
+      <svg class="icon-muted" viewBox="0 0 24 24" aria-hidden="true">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <line x1="22" y1="9" x2="16" y2="15"></line>
+        <line x1="16" y1="9" x2="22" y2="15"></line>
+      </svg>
+    </button>
+    <input id="volumeSlider" type="range" min="0" max="100" value="100" aria-label="Volume">
+  </div>
+
+  <script>
+    // Replace with the ID of your YouTube video (the part after "v=" in the URL)
+    var VIDEO_ID = '4NdDRfw938s';
+
+    var player;
+    var volumeEl = document.getElementById('volume');
+    var muteBtn = document.getElementById('muteBtn');
+    var slider = document.getElementById('volumeSlider');
+    var hideTimer;
+
+    // Load the YouTube IFrame API
+    var tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(tag);
+
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('player', {
+        videoId: VIDEO_ID,
+        playerVars: {
+          autoplay: 1,
+          mute: 1,
+          controls: 0,
+          rel: 0,
+          playsinline: 1,
+          modestbranding: 1,
+          iv_load_policy: 3,
+          cc_load_policy: 0,
+          disablekb: 1,
+          fs: 0,
+          loop: 1,
+          playlist: VIDEO_ID
+        },
+        events: {
+          onReady: function (e) {
+            e.target.mute();
+            e.target.playVideo();
+          },
+          onStateChange: function (e) {
+            if (e.data === YT.PlayerState.ENDED) {
+              player.seekTo(0);
+              player.playVideo();
+            }
+          }
+        }
+      });
+    }
+
+    function setMutedUI(muted) {
+      volumeEl.classList.toggle('is-muted', muted);
+    }
+
+    // Mute button
+    muteBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (!player) return;
+      if (player.isMuted()) {
+        player.unMute();
+        if (player.getVolume() === 0) {
+          player.setVolume(100);
+          slider.value = 100;
+        }
+        setMutedUI(false);
+      } else {
+        player.mute();
+        setMutedUI(true);
+      }
+    });
+
+    // Volume slider
+    slider.addEventListener('input', function () {
+      if (!player) return;
+      var v = Number(slider.value);
+      player.setVolume(v);
+      if (v === 0) {
+        player.mute();
+        setMutedUI(true);
+      } else {
+        player.unMute();
+        setMutedUI(false);
+      }
+    });
+
+    // Turn sound on at the first click, tap or key press anywhere on the page
+    var interactionEvents = ['click', 'touchend', 'keydown'];
+
+    function enableSoundOnFirstInteraction(e) {
+      // Let the volume controls handle their own clicks
+      if (e.target && e.target.closest && e.target.closest('#volume')) {
+        removeInteractionListeners();
+        return;
+      }
+      if (player && player.isMuted && player.isMuted()) {
+        player.unMute();
+        player.setVolume(Number(slider.value) || 100);
+        setMutedUI(false);
+      }
+      removeInteractionListeners();
+    }
+
+    function removeInteractionListeners() {
+      interactionEvents.forEach(function (evt) {
+        document.removeEventListener(evt, enableSoundOnFirstInteraction);
+      });
+    }
+
+    interactionEvents.forEach(function (evt) {
+      document.addEventListener(evt, enableSoundOnFirstInteraction);
+    });
+
+    // Show controls on movement / touch, fade out when idle
+    function showControls() {
+      volumeEl.classList.add('visible');
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(function () {
+        volumeEl.classList.remove('visible');
+      }, 2500);
+    }
+
+    ['mousemove', 'touchstart', 'keydown'].forEach(function (evt) {
+      document.addEventListener(evt, showControls, { passive: true });
+    });
+
+    showControls();
+  </script>
 
 </body>
 </html>
