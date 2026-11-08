@@ -6,6 +6,7 @@
 
   <title>Silent Film</title>
   <meta name="description" content="Silent Film — a filmette.">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
 
   <style>
     * {
@@ -145,8 +146,8 @@
   </div>
 
   <script>
-  
-    var VIDEO_ID = '0rHxK0Hjqnw&t=16s';
+    // YouTube video ID (the part after "v=" in the YouTube link)
+    var VIDEO_ID = '0rHxK0Hjqnw';
 
     var player;
     var volumeEl = document.getElementById('volume');
@@ -164,6 +165,7 @@
         videoId: VIDEO_ID,
         playerVars: {
           autoplay: 1,
+          origin: window.location.origin,
           mute: 1,
           controls: 0,
           rel: 0,
